@@ -59,7 +59,7 @@ def detect_cole(html_path: str) -> float:
     if not found_team_scores:
         score += 0.1
 
-    return score
+    return float(min(1.0,score))
 
 
 
@@ -74,4 +74,5 @@ TEST_PATHS = {
 
 for name, path in TEST_PATHS.items():
     score = detect_cole(path)
+
     print(f"{name:6} format confidence score: {score:.2f}")
