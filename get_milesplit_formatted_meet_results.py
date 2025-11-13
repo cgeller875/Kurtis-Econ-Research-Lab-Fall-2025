@@ -182,6 +182,58 @@ def wrangle_cole(html_content, race_url=None):
 
     return pd.DataFrame(rows, columns=INDIVIDUAL_TABLE_HEADERS)
 
+# Max Detector Function Here:
+
+def detect_max(html: str) -> float: ## replace the function name with your own
+    """
+    Return a confidence in [0,1] that this HTML matches the 'Katie' format. 
+    NOTES FOR IMPLEMENTATION: 
+    - Name your function detect_YOURNAME 
+    - adjust signatures and weights for your format as needed 
+    - you do not need to include all types of signals shown here if you can generate a reliable score with fewer 
+    - be careful not to use signals that are too general and might appear in other formats 
+    - aim for a final score that is well-calibrated (e.g., real Katie files score near 1.0, non-Katie files near 0.0) 
+    
+    Signals: 
+    1) Table has class 'eventTable' (strong, +0.6) 
+    2) Header names include Place/Video/Athlete/Team/Mark/Points (secondary, up to +0.3) 
+    3) There are links (<a>) inside the table body (weak, +0.1)
+    """
+    ## Read in my html file with beautiful soup.
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    score = 0.0
+    # --- 1) Strong: find a table whose class list includes 'eventTable'
+    table = None
+    for tbl in soup.find_all("table"):
+        classes = [c.lower() for c in tbl.get("class", [])]
+        if not any("eventtable" in c for c in classes):
+            table = tbl
+            break
+
+    # If no EventTable found, score remains 0 and we exit early
+    if not table:
+        return 0.0  # early exit if no relevant table
+
+    score += 0.6  # found the old-style table
+
+    # --- 2) Secondary: header names present (ignore blank headers like <th></th>) ---
+    REQUIRED_HEADERS = {"place", "athlete", "grade", "team", "avg mile", "finish", "points"}
+    th_texts = [th.get_text(" ", strip=True).lower() for th in table.find_all("th")]
+    headers_found = set(th_texts)
+    matched = len(REQUIRED_HEADERS.intersection(headers_found))
+
+    if matched:
+        score += 0.3 * (matched / len(REQUIRED_HEADERS))  # proportional match
+
+    # --- 3) Weak: presence of links in tbody (athlete/team profile links) ---
+    links_in_body = table.select("tbody a[href]")
+    if len(links_in_body) == 0:
+        score += 0.1
+    return min(score, 1.0) #return the final score, or 1 if the score is bigger than 1.
+
+score = detect_max(html) 
+print(f"Max format confidence score: {score:.2f}")
 
 # Function to process URLs and save data
 def process_urls_and_save(urls):
